@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제품 상세보기</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .page-content {
+            font-family: 'Noto Sans KR', Arial, sans-serif; /* 가독성 좋은 현대적 폰트 */
+            background-color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 10px;  /* ✅ 기존보다 패딩 줄이기 */
+            background-color: transparent;
+        }
+        .box {
+            background-color: rgba(255, 255, 255, 0.925); /* 배경을 흰색으로 변경 */
+            padding: 15px;
+            border-radius: 12px; 
+            max-width : 1300px;
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+
+/* 모서리 둥글게 */
+        }
+        .search-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            width: 97.5%;
+        }
+        .search-title {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        
+        .filter-box {
+            position: relative;
+            width: 250px;
+            padding-bottom: 20px;
+            margin-left: 0px; /* ✅ 중앙 정렬 */
+        }
+        .filter-search-button {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .product-list {
+            flex: 1; /* 남은 공간을 모두 차지 */
+            background-color: #fafafae8;
+            padding: 5px;
+            border-radius: 10px;
+            max-height: 430px; /* 내부 스크롤 제한 */
+            overflow-y: auto;
+            margin-top: 20px;  /* ✅ 박스 위 간격 조정 (기본값보다 넉넉하게) */
+            margin-left: 20px;
+        }
+        .filter-button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 12px;
+            font-size: 14px;
+            background-color: #f8f8f8;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: left;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+        }
+        .filter-button span.filter-selected {
+            font-size: 12px;
+            color: gray;
+            position: absolute;
+            right: 2px; /* 여백 조정 */
+            bottom: 50%;
+            transform: translateY(50%);
+            text-align: right;
+        }
+        .filter-selected {
+            font-size: 12px;
+            color: gray;
+            position: absolute;
+            bottom: 1px;
+            left: 10px;
+        }
+        .filter-options {
+            display: none;
+            position: absolute;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        /* 필터 옵션 강조 */
+        .filter-options label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        /* 한 번에 하나의 옵션만 열리도록 설정 */
+        .filter-box.active .filter-options {
+            display: block;
+        }
+
+        /* "제품 찾기" 제목 왼쪽 정렬 */
+        .product-list h2 {
+            text-align: left;
+            margin-left: 20px;
+        }
+        .graph-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .graph-box {
+            flex: 1 1 45%; /* ✅ 한 줄에 두 개씩 배치 */
+            min-height: 250px;
+            background-color: #f2f2f2;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .bar-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .background-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #e0e0e0;
+            border-radius: 8px; /* ✅ 바 모서리 둥글게 */
+            overflow: hidden;
+            position: absolute;
+        }
+        .bar-label {
+            width: 120px;  /* ✅ 기존보다 30px 축소 */
+            text-align: right;
+            font-weight: normal;  /* ✅ 기존 bold 해제 */
+            font-size: 13px;  /* ✅ 크기 조정 */
+            margin-right: 10px;
+        }
+        .bar-wrapper {
+            flex: 1;
+            position: relative;
+            height: 18px; /* ✅ 바 높이 더 얇게 */
+        }
+        
+        .bar {
+            height: 100%;
+            border-radius: 8px;
+            position: absolute;
+            left: 0;
+            width: 0;
+            transition: width 1.5s ease-in-out;
+        }
+        
+        /* ✅ 90점에서 '점'이 내려가는 문제 해결 */
+        .bar-label span {
+            vertical-align: middle; /* 점수와 '점'을 같은 높이로 맞춤 */
+        }
+        .bar-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: rgb(0, 0, 0);
+            font-weight: bold;
+            font-size: 12px; /* ✅ 글자 크기 축소 */
+        }
+        /* 제품 카드 스타일 */
+        .product-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #fafafae8; /* 연한 회색 배경 */
+            border-radius: 5px;
+            padding: 5px;
+            margin-bottom: 5px;
+            width: 95%;
+            margin: 5px auto;
+            margin-left: 0;
+            gap: 8px;
+        }
+
+        .product-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+        .product-info-text {
+            font-size: 14px;  /* ✅ 기본 텍스트 크기 */
+            line-height: 0.8;
+            font-weight: normal;
+        }
+        /* 제품 정보 텍스트 스타일 */
+        .product-info {
+            text-align: left;
+            font-size: 14px;
+            flex-grow: 1;
+            margin-left: 15px;
+            line-height: 1.2;
+        }
+        .product-info-text strong {
+            font-size: 13px;  /* ✅ 제목(카테고리, 성별 등) 크기 작게 */
+            font-weight: normal;  /* ✅ 기본 글씨체 유지 */
+            color: #555;  /* ✅ 연한 회색으로 조정 */
+        }
+        .product-info-text span {
+            font-size: 16px;  /* ✅ 실제 값(구두, 공용 등) 더 크게 */
+            font-weight: bold;
+            color: #222;  /* ✅ 강조 효과 */
+        }
+        #product-name {
+            font-size: 17.5px;  /* ✅ 더 크게 */
+            font-weight: bold;
+            color: rgb(49, 165, 14);
+        }
+        #product-info {
+            flex-grow: 0;  /* ✅ 자동 확장 방지 */
+            width: 580px;  /* ✅ 너비 고정 */
+            text-align: left;
+            margin-right: auto; /* 🔥 왼쪽 정렬되도록 변경 */
+        }
+        
+        #analysis-scores-container {
+            display: flex;
+            justify-content: center;  /* ✅ 중앙 정렬로 변경 */
+            align-items: center;
+            background-color: #fafafae8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            width: 80%; /* ✅ 너비 조절 (공백 줄이기) */
+            max-width: 450px;
+            margin-top: 15px;
+            margin-left: 0px; /* ✅ 가운데 정렬 */
+            margin-right: 18.5px;
+        }
+
+        /* 점수 박스 스타일 */
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 120px;
+        }
+
+        .score-container span {
+            line-height: 0.3; /* 줄 간격 조절 (기본값은 1.5~1.6) */
+        }
+        
+
+        /* 최고점, 최저점 텍스트 스타일 */
+        .best-score {
+            background-color: #FFD700;
+            color: black;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-bottom: 3px;
+        }
+
+        .worst-score {
+            background-color: #FF6347;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .sentiment-score {
+            font-size: 11px; 
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 3px;
+        }
+
+        .search-box {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px; /* 간격 줄이기 */
+        }
+        
+        /* ✅ 검색 입력 필드 크기 조정 */
+        .search-box input {
+            width: 220px;  /* 폭 줄이기 */
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        /* ✅ 검색 버튼 스타일 */
+        .search-box button {
+            padding: 10px 14px;
+            background-color: #208cff;
+            color: white;
+            font-size: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .search-box button:hover {
+            background-color: #0056b3;
+        }
+
+        #topic-results {
+            clear: both; /* 겹침 방지 */
+            margin-top: 7px; /* 제품 정보 박스와 여백 추가 */
+            padding-top: 10px;
+        }
+
+        .review-container {
+            max-height: 390px; /* 기존 150px에서 증가 */
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 10px;
+            height: auto; /* 내용에 맞게 자동 조절 */
+        }
+        
+        .review-scroll {
+            overflow-y: hidden;
+        }
+        
+        .review-item {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            font-size: 20px;
+        }
+        
+        .review-item p {
+            margin: 5px 0;
+            font-size: 15px;  /* ✅ 기존보다 조금 더 크게 조정 */
+            line-height: 1.5;  /* ✅ 가독성을 위해 줄 간격 살짝 추가 */
+        }
+        .review-item strong {
+            font-size: 15px;  /* ✅ 날짜, 평점 강조 */
+            font-weight: bold;
+        }
+        .analysis-score-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+            width: 40%;
+            min-width: 250px;
+        }
+
+        .score-analysis-box {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            width: 100%; /* 부모 요소 안에서 꽉 차게 */
+            max-width: 500px;
+            margin-left: auto; /* 오른쪽 정렬 */
+            margin-right: auto;
+        }
+
+        .score-box {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .gauge-container {
+            width: 140px;
+            height: 70px;
+            position: relative;
+            margin: auto;
+            display: inline-block;
+            justify-content: center;
+            align-items: center;
+        }
+        .gauge-svg {
+            overflow: visible;
+        }
+        .gauge-background {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 20; /* ✅ 배경 두께 조정 */
+        }
+        .gauge-text {
+            font-size: 16px;
+            font-weight: bold;
+            fill: black;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        .gauge {
+            width: 100%;
+            height: 100%;
+            background: #ddd;
+            border-radius: 120px 120px 0 0; /* ✅ 완벽한 반원 */
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gauge-fill {
+            fill: none;
+            stroke-width: 20;
+            stroke-linecap: round;
+            transition: stroke-dasharray 1s ease-in-out, stroke 0.5s ease-in-out;
+        }
+        .gauge-cover {
+            width: 70%;
+            height: 50%;
+            background: white;
+            border-radius: 100px 100px 0 0; /* ✅ 원형 유지 */
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: black;
+        }
+        .gauge-score {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: bold;
+            color: black;
+            text-align: center;
+        }
+        
+        .gauge-cover {
+            width: 80%;
+            height: 50%;
+            background: white;
+            border-radius: 50% 50% 0 0;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .gauge-eval-text {
+            font-size: 17px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        
+        /* 점수 텍스트 (작고 연한 색) */
+        .gauge-score-text {
+            font-size: 13px;
+            fill: #666;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        #product-info-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;  /* 🔥 제품 정보가 왼쪽에 붙도록 변경 */
+            gap: 20px;  /* ✅ 간격 유지 */
+            width: 97.5%;
+            margin: 10px auto;
+            background: #fafafae8;
+        }
+        
+        
+        #review-trend-container {
+            width: 45%; /* 기존보다 줄임 */
+            max-width: 450px; /* 최대 너비 제한 */
+            height: 240px;
+            background: #fafafae8;
+            padding: 10px;
+            border-radius: 8px;
+            overflow: hidden; /* 그래프가 박스를 벗어나지 않도록 */
+            margin-bottom: 5px; /* ✅ 위로 10px 올리기 */
+        }
+        
+        #review-trend-chart {
+            width: 100%;
+            height: 100%;
+            max-height: 230px; /* 그래프 크기 제한 */
+        }
+        #comment-box {
+            width: 55%; /* 기존보다 늘림 */
+            height: 240px;
+            background: #fafafae8;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* 텍스트 중앙 정렬 */
+            align-items: center;
+            text-align: center;
+        }
+        .result-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* 3열 배치 */
+            grid-template-rows: auto auto; /* 2줄 배치 */
+            gap: 15px;
+            margin-top: 1px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        /* 기존 graph-container와 구별 */
+        .result-box {
+            height: auto;
+            background-color: #fafafae8;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #review-summary {
+            grid-row: 1 / span 2; /* 2줄 차지 */
+            max-height: 100%; /* 세로 높이 유지 */
+            background-color : #fafafae8 ;
+        }
+        #selected-topic-box {
+            display: none;  /* 요소를 보이지 않게 설정 */
+            visibility: hidden; /* 공간 차지도 하지 않도록 설정 */
+            height: 0;
+            padding: 0;
+            margin: 0;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: auto;
+            max-width: 250px;  /* ✅ 최대 너비 제한 */
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            position: absolute;
+            bottom: 125%;  /* ✅ 기본적으로 요소 위쪽에 뜨게 */
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);  /* ✅ 살짝 위로 이동 효과 */
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+
+    </style>
+</head>
+
+
+{% extends "base.html" %}
+{% block title %}제품 상세보기{% endblock %}
+{% block content %}
+<div class="productDetail-content"> 
+
+    <div class="container">
+        <div class="box">
+            <div class="search-box">
+                <input type="text" id="product-id" placeholder="제품 ID 입력">
+                <button onclick="goToShop()">판매 사이트로 이동</button>
+            </div>
+            
+        
+            <!-- ✅ 제품 정보 박스 -->
+            <div id="product-info-container">
+                <!-- 왼쪽: 제품 정보 -->
+                <div id="product-info">
+                    <div class="product-container">
+                        <img id="product-image" class="product-image" src="" alt="제품 이미지">
+                        <div class="product-info-text">
+                            <p><strong></strong> <span id="product-name"></span></p>
+                            <p><strong>가격:</strong> <span id="product-price"></span></p>
+                            <p><strong>성별:</strong> <span id="product-gender"></span></p>
+                            <p><strong>카테고리:</strong> <span id="product-category"></span></p>
+                            <p><strong>브랜드:</strong> <span id="product-brand"></span></p>
+                            <p><strong>리뷰:</strong> <span id="product-review-info"></span></p>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- 오른쪽: 종합 평가 점수 -->
+                <div id="analysis-scores-container">
+                    <!-- 종합 분석 평가 -->
+                    <div class="score-box" title="리뷰의 개수, 추이, 내용 등을 종합해 부여한 점수입니다. ">
+                        <h3>종합 분석 평가</h3>
+                        <div class="gauge-container">
+                            <svg width="140" height="70" viewBox="0 0 140 70" class="gauge-svg">
+                                <!-- 배경 (회색) -->
+                                <path d="M 10 60 A 50 50 0 0 1 130 60" class="gauge-background"/>
+                                <!-- 채워지는 부분 (동적 색상) -->
+                                <path d="M 10 60 A 50 50 0 0 1 130 60" class="gauge-fill" id="overall-score-fill" stroke-dasharray="0, 157"/>
+                                <!-- 평가 텍스트 (우수, 보통 등) -->
+                                <text x="70" y="42" class="gauge-eval-text" id="overall-score-eval">보통</text>
+                                <!-- 점수 텍스트 (연한 색, 작게) -->
+                                <text x="70" y="57" class="gauge-score-text" id="overall-score-text">61점 / 100점</text>
+                            </svg>
+                        </div>
+                    </div>
+                
+                    <!-- 브랜드 분석 평가 -->
+                    <div class="score-box" title="브랜드의 제품별 만족도 점수와 리뷰별 추이를 분석한 점수입니다.">
+                        <h3>브랜드 분석 평가</h3>
+                        <div class="gauge-container">
+                            <svg width="140" height="70" viewBox="0 0 140 70" class="gauge-svg">
+                                <!-- 배경 (회색) -->
+                                <path d="M 10 60 A 50 50 0 0 1 130 60" class="gauge-background" stroke="#ddd" stroke-width="8" fill="none"/>
+                                <!-- 채워지는 부분 (색상 변경 가능) -->
+                                <path d="M 10 60 A 50 50 0 0 1 130 60" class="gauge-fill" id="brand-score-fill" stroke="#FF5733"
+                                    stroke-width="8" fill="none" stroke-dasharray="0, 251" stroke-linecap="round"/>
+                                <!-- 평가 문구 (보통, 미흡 등) -->
+                                <text x="70" y="42" class="gauge-text" id="brand-score-text" text-anchor="middle"
+                                    font-size="16px" fill="#FF5733">-</text>
+                                <!-- ✅ 추가: 점수 텍스트 -->
+                                <text x="70" y="58" class="gauge-score-text" id="brand-score-number" text-anchor="middle"
+                                    font-size="13px" fill="#666" font-weight="bold">-</text>
+                            </svg>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+            
+            <div class="graph-container">
+                <!-- 왼쪽: 리뷰 트렌드 그래프 -->
+                <div id="review-trend-container" class="graph-box" title="최근 2년간의 리뷰량의 추이를 나타냅니다">
+                    <h3>리뷰량 추이</h3>
+                    <canvas id="review-trend-chart"></canvas>
+                </div>
+            
+                <!-- 오른쪽: 코멘트 박스 -->
+                <div id="comment-box" class="graph-box" title="분석한 리뷰 내용을 요약하여 분석내용 확인에 도움이 되도록 제공됩니다.">
+                    <h3>분석 내용 요약</h3>
+                    <div id="comment-content">
+                        <p>리뷰 분석 요약 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="topic-results">분석 결과가 여기에 표시됩니다.</div>
+
+            <div class="search-container">
+                <!-- 왼쪽 필터 박스 -->
+                <div class="filter-box">
+                    <h2 class="search-title", title = "검색된제품과 유사한 제품중 가장 낮게 책정된 토픽에서 좋은 평가를 받은 유사 제품 을 제공합니다. ">피드백 제품 추천</h2> <!-- 제목 위치 유지 -->
+            
+                    <button class="filter-button" onclick="toggleFilter('topic')">
+                        토픽 <span class="filter-selected" id="selected-topic"></span>
+                    </button>
+                    <div class="filter-options" id="filter-topic">
+                        <label>토픽 선택:</label>
+                        <select id="topic-select" onchange="updateFilterLabel('topic')">
+                            <option value="">전체</option>
+                            <option value="내구성 및 품질">내구성 및 품질</option>
+                            <option value="디자인">디자인</option>
+                            <option value="사이즈">사이즈</option>
+                            <option value="가성비">가성비</option>
+                            <option value="착용감">착용감</option>
+                            <option value="배송 및 포장 및 응대">배송 및 포장 및 응대</option>
+                        </select>
+                    </div>
+            
+                    <button class="filter-button" onclick="toggleFilter('category')">
+                        카테고리 <span class="filter-selected" id="selected-category"></span>
+                    </button>
+                    <div class="filter-options" id="filter-category">
+                        <label>카테고리 선택:</label>
+                        <select id="category-select" onchange="updateFilterLabel('category')">
+                            <option value="">전체</option>
+                            <option value="캔버스/단화">캔버스/단화</option>
+                            <option value="구두">구두</option>
+                            <option value="샌들/슬리퍼">샌들/슬리퍼</option>
+                            <option value="힐">힐</option>
+                            <option value="스포츠화">스포츠화</option>
+                            <option value="부츠/워커">부츠/워커</option>
+                            <option value="등산화">등산화</option>
+                            <option value="트레킹화">트레킹화</option>
+                        </select>
+                    </div>
+            
+                    <button class="filter-button" onclick="toggleFilter('gender')">
+                        성별 <span class="filter-selected" id="selected-gender"></span>
+                    </button>
+                    <div class="filter-options" id="filter-gender">
+                        <label>성별 선택:</label>
+                        <select id="gender-select">
+                            <option value="공용">공용</option>
+                            <option value="남자">남자</option>
+                            <option value="여자">여자</option>
+                        </select>
+                    </div>
+            
+                    <button class="filter-button" onclick="toggleFilter('price')">
+                        가격대 <span class="filter-selected" id="selected-price"></span>
+                    </button>
+                    <div class="filter-options" id="filter-price">
+                        <input type="number" id="price-min">
+                        <label> ~ </label>
+                        <input type="number" id="price-max">
+                    </div>
+            
+                    <button class="filter-button" onclick="toggleFilter('reviews')">
+                        리뷰수 <span class="filter-selected" id="selected-reviews"></span>
+                    </button>
+                    <div class="filter-options" id="filter-reviews">
+                        <label>최소 리뷰 수:</label>
+                        <input type="number" id="min-reviews" value="50" min="0" onchange="updateFilterLabel('reviews')">
+                    </div>
+            
+                    <!-- 검색 버튼을 필터 아래에 고정 -->
+                    <div class="filter-search-button">
+                        <button class="search-button" onclick="fetchProductList()">🔍 검색</button>
+                    </div>
+                </div>
+            
+                <!-- 오른쪽 제품 목록 -->
+                <div class="product-list">
+                    <div id="product-results"></div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+
+    <script>
+        console.log("📸 이미지 URL:", document.getElementById("product-image").src);
+
+        function displayResults(data) {
+            const topicResults = document.getElementById("topic-results");
+            topicResults.innerHTML = ""; // ✅ 기존 내용 초기화 (중복 방지)
+        
+            topicResults.innerHTML = `
+                <div id="topic-results" class="result-container">
+    <div class="result-box">
+        <h3>토픽별 만족도</h3>
+        <div id="score-results"></div>
+    </div>
+
+    <div class="result-box">
+        <h3>토픽별 언급량</h3>
+        <div id="frequency-results"></div>
+    </div>
+
+    <div class="result-box" id="review-summary">
+        <h3>주요 리뷰 모음</h3>
+        <div id="selected-topic-box"title="해당 제품의 중요 토픽, 포함된 정보의 양 및 퀄리티 등을 감안하여 중요한 리뷰들을 추출하여 제공합니다. "></div>
+        <div id="related-reviews" class="review-container">
+            <div class="review-scroll">
+                <p>관련 리뷰 불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="result-box">
+        <h3>사이즈별 만족도</h3>
+        <div id="size-satisfaction-results"></div>
+    </div>
+
+    <div class="result-box">
+        <h3>사이즈별 언급량</h3>
+        <div id="size-frequency-results"></div>
+    </div>
+</div>
+            `;
+        
+            // ✅ ID 가져오기 (변경된 구조 반영)
+            const scoreResults = document.getElementById("score-results");
+            const frequencyResults = document.getElementById("frequency-results");
+            const selectedTopicBox = document.getElementById("selected-topic-box");
+        
+            // ✅ 초기화
+            scoreResults.innerHTML = "";
+            frequencyResults.innerHTML = "";
+            selectedTopicBox.innerHTML = "";
+        
+            if (!data.topics || Object.keys(data.topics).length === 0) {
+                topicResults.innerHTML = "<p>해당 제제품에 대한 감성 분석 데이터가 없습니다.</p>";
+                return;
+            }
+        
+            let minTopic = null;
+            let minScore = Infinity;
+            let highestCount = 0;
+            let totalReviews = data.product.review_count || 1;
+        
+            // ✅ "토픽별 만족도" 정렬 (높은 점수순)
+            Object.entries(data.topics)
+                .sort((a, b) => b[1].score - a[1].score)
+                .forEach(([topic, info]) => {
+                    if (info.count > 0 && info.score < minScore) {
+                        minScore = info.score;
+                        minTopic = topic;
+                    }
+                    addBar(scoreResults, topic, info.score, "", 100, true);
+                });
+        
+            // ✅ "토픽별 언급량" 정렬 (빈도 높은 순)
+            Object.entries(data.topics)
+                .sort((a, b) => b[1].count - a[1].count)
+                .forEach(([topic, info]) => {
+                    let percent = ((info.count / totalReviews) * 100).toFixed(1);
+                    let displayText = `${percent}%`;
+                    addBar(frequencyResults, topic, info.count, displayText, totalReviews, false);
+                    if (info.count > highestCount) {
+                        highestCount = info.count;
+                    }
+                });
+        
+            // ✅ 기준에 맞는 토픽 자동 선택
+            if (minTopic) {
+                selectedTopicBox.innerHTML = `<p style="font-size:18px; font-weight:bold;">${minTopic}</p>`;
+            
+                // ✅ 필터 자동 설정
+                document.getElementById("topic-select").value = minTopic;
+                document.getElementById("selected-topic").innerText = ` (${minTopic})`;
+        
+                // ✅ 관련 리뷰 불러오기 실행
+                fetchRelatedReviews(data.product.product_id, minTopic);
+            }
+        }
+        
+        
+    
+        function addBar(container, label, value, text, maxValue, isSatisfaction = false) {
+            const barContainer = document.createElement("div");
+            barContainer.classList.add("bar-container");
+        
+            const labelDiv = document.createElement("div");
+            labelDiv.classList.add("bar-label");
+            labelDiv.innerHTML = `${label}`;
+        
+            const barWrapper = document.createElement("div");
+            barWrapper.classList.add("bar-wrapper");
+        
+            const backgroundBar = document.createElement("div");
+            backgroundBar.classList.add("background-bar");
+        
+            const bar = document.createElement("div");
+            bar.classList.add("bar");
+        
+            // ✅ [중요] 만족도 그래프는 50점부터 시작
+            let widthPercentage;
+            if (isSatisfaction) {
+                widthPercentage = ((value - 50) / (100 - 50)) * 100;  // 50~100점 범위로 조정
+            } else {
+                widthPercentage = maxValue > 0 ? (value / maxValue) * 100 : 5;
+            }
+        
+            widthPercentage = Math.max(5, widthPercentage); // 최소 5% 보장
+        
+            // ✅ 색상 설정 (만족도만 적용)
+            if (isSatisfaction) {
+                bar.style.backgroundColor = value > 92 ? "#4CAF50" : value >= 85 ? "#FFD700" : "#FF5733";
+            } else {
+                bar.style.backgroundColor = "#888";
+                bar.classList.add("frequency-bar");
+            }
+        
+            bar.style.width = `0%`;
+            setTimeout(() => {
+                bar.style.width = `${widthPercentage}%`;
+            }, 300);
+        
+            // ✅ 텍스트를 오른쪽 정렬
+            const textElement = document.createElement("span");
+            textElement.classList.add("bar-text");
+            textElement.innerText = text ? text : `${value.toFixed(1)}점`;
+            textElement.style.position = "absolute";
+            textElement.style.right = "-60px";  // ✅ 항상 오른쪽 바깥에 배치
+            textElement.style.fontWeight = "bold";
+            textElement.style.color = "#333";
+        
+            // ✅ 작은 막대에서는 내부에 텍스트 표시
+            if (widthPercentage < 20) {
+                textElement.style.right = "5px";  // 막대 안쪽으로 이동
+                textElement.style.color = "#fff"; // 밝은 배경에서는 흰색으로 변경
+            }
+        
+            bar.appendChild(textElement);
+            backgroundBar.appendChild(bar);
+            barWrapper.appendChild(backgroundBar);
+            barContainer.appendChild(labelDiv);
+            barContainer.appendChild(barWrapper);
+            container.appendChild(barContainer);
+        }
+        
+        
+        
+        
+        
+        
+
+        function toggleFilter(filterId) {
+            const currentFilter = document.getElementById(`filter-${filterId}`);
+            const allFilters = document.querySelectorAll(".filter-options");
+        
+            // 모든 필터 창 닫기
+            allFilters.forEach(filter => {
+                if (filter !== currentFilter) {
+                    filter.style.display = "none";
+                    filter.parentElement.classList.remove("active");
+                }
+            });
+        
+            // 현재 선택된 필터 토글
+            const isOpen = currentFilter.style.display === "block";
+            currentFilter.style.display = isOpen ? "none" : "block";
+            currentFilter.parentElement.classList.toggle("active", !isOpen);
+        }
+    
+        function updateFilterLabel(filterId) {
+            let selectElement = document.getElementById(`${filterId}-select`);
+            let selectedText = "";
+        
+            if (filterId === "reviews") {
+                selectedText = document.getElementById("min-reviews").value + "개 이상";
+            } else if (filterId === "price") {
+                const minPrice = document.getElementById("price-min").value.trim();
+                const maxPrice = document.getElementById("price-max").value.trim();
+        
+                if (minPrice !== "" && maxPrice !== "") {
+                    selectedText = `${minPrice} ~ ${maxPrice}`;
+                } else if (minPrice !== "") {
+                    selectedText = `${minPrice} 원 이상`;
+                } else if (maxPrice !== "") {
+                    selectedText = `${maxPrice} 원 이하`;
+                } else {
+                    selectedText = "최소 ~ 최대";
+                }
+            } else {
+                selectedText = selectElement.options[selectElement.selectedIndex].text;
+            }
+        
+            document.getElementById(`selected-${filterId}`).innerText = selectedText !== "전체" ? ` ${selectedText}` : "";
+            // ✅ UI 업데이트 후 검색 실행
+            fetchProductList();
+        }
+        
+        
+
+        async function applyAutoFilters(data) {
+            try {
+                const productInfo = data.product;
+                if (!productInfo) return;
+        
+                // ✅ 가격 데이터 전처리: "원" 제거 + 숫자로 변환
+                let priceText = productInfo.price.toString().replace(/[^0-9]/g, ""); // 숫자만 남기기
+                let price = parseInt(priceText, 10); // 정수로 변환
+        
+                if (isNaN(price)) {
+                    console.error("❌ 가격 변환 오류: ", productInfo.price);
+                    return;
+                }
+        
+                // ✅ 카테고리 자동 설정
+                document.getElementById("category-select").value = productInfo.category;
+                document.getElementById("selected-category").innerText = ` (${productInfo.category})`;
+        
+                // ✅ 성별 자동 설정
+                document.getElementById("gender-select").value = productInfo.gender;
+                document.getElementById("selected-gender").innerText = ` (${productInfo.gender})`;
+        
+                // ✅ 가격대 자동 설정 (0.5배 ~ 1.5배)
+                const minPrice = Math.floor(price * 0.5);
+                const maxPrice = Math.ceil(price * 1.5);
+                document.getElementById("price-min").value = minPrice;
+                document.getElementById("price-max").value = maxPrice;
+                document.getElementById("selected-price").innerText = ` (${minPrice} ~ ${maxPrice} 원)`;
+        
+                // ✅ 자동으로 해당 필터를 적용하여 유사 제품 검색 실행
+                fetchProductList();
+            } catch (error) {
+                console.error("🔥 자동 필터 설정 오류:", error);
+            }
+        }
+        
+        
+        async function fetchProductList() {
+            const category = document.getElementById("category-select").value || "";
+            const gender = document.getElementById("gender-select").value || "";
+            let priceMin = document.getElementById("price-min").value.trim();
+            let priceMax = document.getElementById("price-max").value.trim();
+            const topic = document.getElementById("topic-select").value || "";
+            const minReviews = document.getElementById("min-reviews").value || 0;
+        
+            // ✅ 빈 문자열("")이 API에 전달되지 않도록 수정
+            priceMin = priceMin === "" ? "0" : parseInt(priceMin, 10);
+            priceMax = priceMax === "" ? "99999999" : parseInt(priceMax, 10);
+        
+            // 🔍 검색 요청 URL 확인
+            const requestUrl = `/api/product-search?category=${category}&gender=${gender}&price_min=${priceMin}&price_max=${priceMax}&topic=${topic}&min_reviews=${minReviews}`;
+            console.log("📡 검색 요청:", requestUrl);
+        
+            try {
+                const response = await fetch(requestUrl);
+                const responseText = await response.text();
+                console.log("🔍 검색 응답:", responseText);
+        
+                if (!response.ok) {
+                    console.error("🚨 검색 요청 실패!");
+                    return;
+                }
+        
+                const data = JSON.parse(responseText);
+                displayProducts(data.products);
+            } catch (error) {
+                console.error("🔥 제품 검색 중 오류:", error);
+            }
+        }
+        
+        
+
+        function displayProducts(products) {
+            const resultsContainer = document.getElementById("product-results");
+            resultsContainer.innerHTML = "";
+            fetchBrandScore()
+            if (!products.length) {
+                resultsContainer.innerHTML = "<p>조건에 맞는 제품이 없습니다.</p>";
+                return;
+            }
+        
+            products.forEach(product => {
+                const productDiv = document.createElement("div");
+                productDiv.classList.add("product-container");
+        
+                let reviewInfo = `${product.review_count}개`;
+                if (product.avg_sentiment) {
+                    reviewInfo += ` (${product.avg_sentiment.toFixed(1)}점)`;
+                }
+        
+                let topicScores = `<span class="sentiment-score">전체 평균 감성 점수: ${product.avg_sentiment.toFixed(1)}점</span>`;
+                if (Object.keys(product.filtered_topics).length > 0) {
+                    topicScores = "";
+                    Object.entries(product.filtered_topics).forEach(([topic, score]) => {
+                        topicScores += `<span class="sentiment-score">${topic}: ${score.toFixed(1)}점</span> `;
+                    });
+                }
+        
+                productDiv.innerHTML = `
+                    <img src="${product.image_url}" class="product-image" style="cursor: pointer;" onclick="openProductDetails('${product.product_id}')" />
+                    <div class="product-info">
+                        <p><strong>
+                            <span style="cursor: pointer; text-decoration: underline;" onclick="openProductDetails('${product.product_id}')">${product.product_name}</span>
+                        </strong></p>
+                        <p>가격: ${product.price}</p>
+                        <p>카테고리: ${product.category}</p>
+                        <p>브랜드: ${product.brand}</p>
+                        <p>리뷰 수: ${reviewInfo}</p>
+                    </div>
+                    <div class="score-container">
+                        ${topicScores}
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(productDiv);
+            });
+        }
+        
+        
+        
+        
+        
+        function displayProductInfo(productData) {
+            if (!productData || !productData.product_name) {
+                document.getElementById("product-info").style.display = "none";
+                return;
+            }
+        
+            console.log("📸 서버에서 받은 productData:", productData);  // API 응답 확인
+        
+            // ✅ 기본 이미지 URL
+            const defaultImageUrl = "https://rahulindesign.websites.co.in/twenty-nineteen/img/defaults/product-default.png";
+        
+            // ✅ `image_url`이 없거나 `undefined`이면 기본 이미지 사용
+            let imageUrl = productData.image_url && productData.image_url.trim() !== "" 
+                ? productData.image_url 
+                : defaultImageUrl;
+        
+            const productImage = document.getElementById("product-image");
+            productImage.src = imageUrl;
+            productImage.style.display = "block"; // 혹시라도 숨겨져 있으면 보이게
+        
+            // ✅ 이미지 로드 실패 시 기본 이미지로 변경
+            productImage.onerror = function() {
+                console.error("❌ 이미지 로드 실패, 기본 이미지로 대체:", imageUrl);
+                this.src = defaultImageUrl;
+            };
+        
+            document.getElementById("product-name").innerText = productData.product_name || "정보 없음";
+            document.getElementById("product-price").innerText = 
+                productData.price ? productData.price.toLocaleString("ko-KR") : "정보 없음";
+            document.getElementById("product-gender").innerText = productData.gender || "정보 없음";
+            document.getElementById("product-category").innerText = productData.category || "정보 없음";
+            document.getElementById("product-brand").innerText = productData.brand || "정보 없음";
+            document.getElementById("product-review-info").innerText = 
+                productData.review_count 
+                    ? `${productData.review_count}개 (${productData.avg_rating ? productData.avg_rating.toFixed(1) + "점" : "정보 없음"})`
+                    : "정보 없음";
+        
+            document.getElementById("product-info").style.display = "block";
+        }
+        
+        async function fetchBrandScore() {
+            const productId = document.getElementById("product-id").value.trim();
+            if (!productId) {
+                console.warn("⚠️ 제품 ID가 없습니다. 브랜드 점수 요청을 건너뜁니다.");
+                return;
+            }
+        
+            console.log(`📡 브랜드 점수 요청: /api/brand-analysis-kang/${productId}`);
+        
+            try {
+                const response = await fetch(`/api/brand-analysis-kang/${productId}`);
+                if (!response.ok) {
+                    console.error("🚨 브랜드 점수 요청 실패! 상태 코드:", response.status);
+                    return;
+                }
+        
+                const data = await response.json();
+                console.log("📊 [fetchBrandScore] API 응답 데이터:", data);
+        
+                if (!data || !data.overall_score) {
+                    console.warn("⚠️ 브랜드 점수 데이터가 없습니다.");
+                    return;
+                }
+        
+                // ✅ API 응답 값으로 최종 업데이트
+                updateBrandGauge(data.overall_score);
+        
+            } catch (error) {
+                console.error("🔥 [fetchBrandScore] 네트워크 오류:", error);
+            }
+        }
+        
+        
+        function updateBrandGauge(score) {
+            console.log(`⚙️ [updateBrandGauge] 브랜드 점수 업데이트: ${score}`);
+        
+            let brandFill = document.getElementById("brand-score-fill");
+            let brandText = document.getElementById("brand-score-text");
+            let scoreTextElement = document.getElementById("brand-score-number");
+        
+            if (!brandFill || !brandText) {
+                console.error("❌ 브랜드 평가 요소를 찾을 수 없습니다.");
+                return;
+            }
+        
+            // ✅ 점수를 숫자로 변환
+            score = parseFloat(score);
+            if (isNaN(score)) {
+                console.warn("⚠️ 브랜드 점수가 유효하지 않음, 기본값(70) 적용");
+                score = 70;
+            }
+        
+            // ✅ 게이지 바 값 계산 (0~100 범위)
+            let percent = Math.max(0, Math.min(score, 100)) / 100;
+            let dashArrayValue = percent * 157; // 게이지 바 업데이트
+        
+            // ✅ stroke-dasharray 적용
+            brandFill.style.strokeDasharray = `${dashArrayValue}, 157`;
+        
+            // ✅ 색상 설정 (점수 구간별 색상 변경)
+            let strokeColor = "#FF5733"; // 기본값 (빨간색)
+            let textColor = "#FF5733"; // 기본값 (빨간색)
+            let evalText = "미흡"; // 기본 텍스트
+        
+            if (score >= 90) {
+                strokeColor = "#4CAF50"; // 초록색 (우수)
+                textColor = "#4CAF50";
+                evalText = "우수";
+            } else if (score >= 82) {
+                strokeColor = "#FFD700"; // 노란색 (보통)
+                textColor = "#FFD700";
+                evalText = "보통";
+            }
+        
+            brandFill.setAttribute("stroke", strokeColor);
+            brandText.style.fill = textColor;  // ✅ 평가 문구 색상 변경
+            brandText.textContent = evalText;
+        
+            // ✅ 점수 스타일 변경 (진한 회색, 볼드, 폰트 크기 조정)
+            if (!scoreTextElement) {
+                console.warn("⚠️ 'brand-score-number' 요소가 없어서 새로 생성합니다.");
+        
+                // ✅ 요소가 없으면 생성하여 추가
+                scoreTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                scoreTextElement.setAttribute("x", "70");
+                scoreTextElement.setAttribute("y", "57");
+                scoreTextElement.setAttribute("class", "gauge-score-text");
+                scoreTextElement.setAttribute("id", "brand-score-number");
+                
+                let svgContainer = document.getElementById("brand-gauge-svg"); // SVG 컨테이너 찾기
+                if (svgContainer) {
+                    svgContainer.appendChild(scoreTextElement);
+                } else {
+                    console.error("❌ SVG 컨테이너를 찾을 수 없습니다.");
+                }
+            }
+        
+            scoreTextElement.style.fill = "#666";  // 어두운 회색 고정
+            scoreTextElement.style.fontWeight = "bold";  // 볼드 적용
+            scoreTextElement.style.fontSize = "13px"; // ✅ 기존보다 살짝 작게
+            scoreTextElement.textContent = `${score.toFixed(1)}/100점`;
+        }
+        
+        
+
+        async function fetchAnalysis() {
+            const productId = document.getElementById("product-id").value.trim();
+            if (!productId) {
+                alert("❌ 제품 ID를 입력하세요.");
+                return;
+            }
+        
+            console.log(`📡 [fetchAnalysis] 요청: /api/strength-weakness/${productId}`);
+        
+            try {
+                const response = await fetch(`/api/strength-weakness/${productId}`);
+                if (!response.ok) {
+                    console.error("🚨 서버 오류 발생! 상태 코드:", response.status);
+                    alert("⚠️ 서버에서 데이터를 불러오지 못했습니다. 다시 시도해주세요.");
+                    return;
+                }
+        
+                const data = await response.json();
+                console.log("📡 [fetchAnalysis] 서버 응답 데이터:", data);
+        
+                if (!data || Object.keys(data).length === 0) {
+                    alert("⚠️ 해당 제품의 분석 데이터가 없습니다.");
+                    return;
+                }
+        
+                updateGauge("overall-score-fill", "overall-score-eval", "overall-score-text", data.overall_score);
+                displayResults(data);
+                displayProductInfo(data.product);
+                applyAutoFilters(data);
+                updateCommentBox(data);
+                fetchReviewTrend();
+                fetchRelatedReviews();
+                await fetchSizeAnalysis();
+                
+                
+        
+            } catch (error) {
+                console.error("🔥 [fetchAnalysis] 네트워크 오류:", error);
+                alert("🚨 네트워크 오류 발생! 인터넷 연결을 확인하거나 다시 시도해주세요.");
+            }
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        
+
+    function openProductDetails(productId) {
+        if (!productId) {
+            alert("❌ 제품 ID가 없습니다.");
+            return;
+        }
+    
+        // ✅ 기존 방식 (새 창 열기) 대신 현재 페이지에서 갱신하도록 변경
+        document.getElementById("product-id").value = productId;
+        fetchAnalysis(); // 🔥 제품 상세 정보 갱신
+        scrollToTop();
+    }
+
+        // ✅ 페이지 로드 시 product_id가 있으면 자동 검색 실행
+        document.addEventListener("DOMContentLoaded", function () {
+            console.log("📊 테스트 데이터로 그래프 확인");
+        
+            // 📊 테스트 데이터로 리뷰 트렌드 그래프 업데이트
+        
+            // ✅ 필터 값 변경 시 자동 검색 실행 (초기 로드 시 실행 방지)
+            let filterChangeTriggered = false;
+        
+            function onFilterChange() {
+                if (!filterChangeTriggered) return;
+                fetchProductList();
+            }
+        
+        document.getElementById("topic-select").addEventListener("change", onFilterChange);
+        document.getElementById("category-select").addEventListener("change", onFilterChange);
+        document.getElementById("gender-select").addEventListener("change", onFilterChange);
+        document.getElementById("price-min").addEventListener("input", onFilterChange);
+        document.getElementById("price-max").addEventListener("input", onFilterChange);
+        document.getElementById("min-reviews").addEventListener("input", onFilterChange);
+    
+        // ✅ 0.5초 후부터 필터 변경 감지 활성화 (초기 로드 방지)
+        setTimeout(() => { filterChangeTriggered = true; }, 500);
+    
+        // ✅ URL에서 product_id가 있으면 1초 후 실행 (즉시 실행 방지)
+        setTimeout(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get("product_id");
+            if (productId) {
+                document.getElementById("product-id").value = productId;
+                fetchAnalysis();  // 1초 후 실행하여 중복 호출 방지
+            }
+        }, 1000);
+
+            scrollToTop();
+        });
+        
+        
+        
+        
+        function displayRawData(data) {
+            const rawDataContainer = document.getElementById("raw-sentiment-data");
+            if (data.raw_data && data.raw_data.length > 0) {
+                rawDataContainer.innerText = JSON.stringify(data.raw_data, null, 2);
+            } else {
+                rawDataContainer.innerText = "감성 분석 데이터가 없습니다.";
+            }
+        }
+
+        // ✅ 점수에 따라 색상 변경 (S&P 500 스타일 적용)
+        function getSentimentColor(score) {
+            if (score < 75) return "rgb(255, 50, 50)";  // 진한 빨강
+            if (score < 80) return "rgb(255, 100, 100)";
+            if (score < 85) return "rgb(255, 150, 150)";
+            if (score === 85) return "rgb(200, 200, 200)"; // 회색
+            if (score < 90) return "rgb(150, 255, 150)";
+            if (score < 95) return "rgb(100, 255, 100)";
+            return "rgb(50, 255, 50)"; // 진한 초록
+        }
+        
+        // ✅ 감성 점수 표시 함수
+        function displaySentimentScores(topics) {
+            const sentimentContainer = document.getElementById("sentiment-scores");
+            sentimentContainer.innerHTML = "";
+
+            const topicNames = ["착용감", "디자인", "가성비", "사이즈", "내구성 및 품질", "배송 및 포장 및 응대"];
+        
+            topicNames.forEach(topic => {
+                const score = topics[topic] ? topics[topic].score : 0; 
+                const scoreBox = document.createElement("span");
+                scoreBox.classList.add("sentiment-score");
+                scoreBox.style.backgroundColor = getSentimentColor(score);
+                scoreBox.innerText = `${topic}: ${score.toFixed(1)}점`;
+                sentimentContainer.appendChild(scoreBox);
+            });
+        }
+        
+        async function fetchRelatedReviews(productId, topic) {
+            try {
+                const response = await fetch(`/api/related-reviews/${productId}?topic=${encodeURIComponent(topic)}`);
+                if (!response.ok) {
+                    console.log("🚨 관련 리뷰 불러오기 실패");
+                    return;
+                }
+        
+                const data = await response.json();
+                console.log("📢 관련 리뷰 데이터:", data);
+        
+                // 🔹 선택된 토픽 표시
+                document.getElementById("selected-topic-name").innerText = topic;
+        
+                displayRelatedReviews(data.reviews);
+            } catch (error) {
+                console.error("🔥 관련 리뷰 불러오기 네트워크 오류:", error);
+            }
+        }
+        
+        
+
+        function displayRelatedReviews(reviews) {
+            const reviewContainer = document.getElementById("related-reviews");
+            reviewContainer.innerHTML = "";
+        
+            if (!reviews.length) {
+                reviewContainer.innerHTML = "<p>선택된 토픽에 대한 부정/중립 리뷰가 없습니다.</p>";
+                return;
+            }
+        
+            const scrollContainer = document.createElement("div");
+            scrollContainer.classList.add("review-scroll");
+        
+            const uniqueReviews = new Set();
+        
+            reviews.forEach((review) => {
+                if (uniqueReviews.has(review.review_text)) return;
+                uniqueReviews.add(review.review_text);
+        
+                const reviewDiv = document.createElement("div");
+                reviewDiv.classList.add("review-item");
+        
+                const rating = review.rating ? `${review.rating}점` : "평점 없음";
+                const date = review.review_date ? review.review_date : "날짜 없음";
+        
+                // ✅ "더보기" 제거 (정규식 활용)
+                const cleanText = review.review_text.replace(/…?더보기/g, "").trim();
+        
+                reviewDiv.innerHTML = `
+                    <p style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">📅 ${date} | ⭐ ${rating}</p>
+                    <p style="font-size: 14px; line-height: 1.3;">${cleanText}</p>
+                    <hr>
+                `;
+                scrollContainer.appendChild(reviewDiv);
+            });
+        
+            reviewContainer.appendChild(scrollContainer);
+        }
+        
+        
+        function selectReviewTopic(data) {
+            const topics = data.topics;
+    
+            if (!topics || Object.keys(topics).length === 0) {
+                return null;
+            }
+    
+            // 1. 만족도 점수가 가장 낮은 3개 토픽 선택
+            const lowestSatisfactionTopics = Object.entries(topics)
+                .filter(([_, info]) => info.count > 0) // 리뷰 수가 0인 경우 제외
+                .sort((a, b) => a[1].score - b[1].score) // 점수가 낮은 순으로 정렬
+                .slice(0, 3)
+                .map(([topic]) => topic);
+    
+            // 2. 언급량이 가장 많은 3개 토픽 선택
+            const highestMentionTopics = Object.entries(topics)
+                .sort((a, b) => b[1].count - a[1].count) // 언급량이 많은 순으로 정렬
+                .slice(0, 3)
+                .map(([topic]) => topic);
+    
+            // 3. 만족도 낮은 토픽과 언급량 많은 토픽 중 겹치는 것 선택
+            const commonTopics = lowestSatisfactionTopics.filter(topic => highestMentionTopics.includes(topic));
+    
+            if (commonTopics.length > 0) {
+                return commonTopics[0]; // 가장 첫 번째 공통 토픽 선택
+            }
+    
+            // 4. 겹치는 게 없으면 만족도 점수가 가장 낮은 토픽 선택
+            return lowestSatisfactionTopics.length > 0 ? lowestSatisfactionTopics[0] : null;
+        }
+
+        async function fetchRelatedReviews(productId) {
+            try {
+                const response = await fetch(`/api/related-reviews/${productId}`);
+                if (!response.ok) {
+                    console.log("🚨 관련 리뷰 불러오기 실패");
+                    return;
+                }
+        
+                const data = await response.json();
+                console.log("📢 관련 리뷰 데이터:", data);
+        
+                displayRelatedReviews(data.reviews);
+            } catch (error) {
+                console.error("🔥 관련 리뷰 불러오기 네트워크 오류:", error);
+            }
+        }
+
+        function updateGauge(idFill, idEval, idText, score) {
+            console.log(`⚙️ [updateGauge] 실행됨 → idFill: ${idFill}, idEval: ${idEval}, idText: ${idText}, score: ${score}`);
+        
+            let fillElement = document.getElementById(idFill);
+            let evalElement = document.getElementById(idEval);  // ✅ 평가 문구 (ex: "좋아요!")
+            let scoreElement = document.getElementById(idText); // ✅ 점수 (ex: "89.5점")
+        
+            if (!fillElement || !evalElement || !scoreElement) {
+                console.error(`❌ 요소를 찾을 수 없음 → idFill: ${idFill}, idEval: ${idEval}, idText: ${idText}`);
+                return;
+            }
+        
+            // ✅ 점수를 숫자로 변환
+            score = parseFloat(score);
+            if (isNaN(score)) {
+                console.warn("⚠️ 점수 값이 유효하지 않음, 기본값(70) 적용");
+                score = -100;
+            }
+        
+            // ✅ -100 ~ 100 사이의 값으로 변환
+            let percent = Math.max(-100, Math.min(score, 100)) / 100;
+            let dashArrayValue = (percent + 1) / 2 * 157; // -100~100 사이 값 변환
+        
+            console.log(`🎯 적용된 점수: ${score}, 변환된 비율: ${percent}, stroke-dasharray: ${dashArrayValue}`);
+        
+            // ✅ `stroke-dasharray` 업데이트
+            fillElement.style.strokeDasharray = `${dashArrayValue}, 157`;
+        
+            // ✅ 평가 문구 및 색상 설정
+            let strokeColor = "#FF5733";  // 기본값 (빨간색)
+            let textColor = "#FF5733";
+            let evalText = "미흡";
+        
+            if (score >= 92) {
+                strokeColor = "#4CAF50"; // 🟢 초록색 (좋아요!)
+                textColor = "#4CAF50";
+                evalText = "우수";
+            } else if (score >= 83) {
+                strokeColor = "#FFD700"; // 🟡 노란색 (준수해요!)
+                textColor = "#FFD700";
+                evalText = "보통";
+            }
+        
+            fillElement.setAttribute("stroke", strokeColor);
+            evalElement.style.fill = textColor;  // ✅ 평가 문구 색상 변경
+            evalElement.textContent = evalText;
+        
+            // ✅ 점수 스타일 변경 (고정 회색 + 볼드 추가)
+            scoreElement.style.fill = "#666";  // 어두운 회색 고정
+            scoreElement.style.fontWeight = "bold";  // 볼드 적용
+            scoreElement.textContent = `${score.toFixed(1)}/100점`;
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        async function fetchReviewTrend(productId) {
+            console.log(`📡 [fetchReviewTrend] API 요청: /api/review-trend/${productId}`);
+            
+            try {
+                const response = await fetch(`/api/review-trend/${productId}`);
+                const responseText = await response.text();  // ✅ 응답을 텍스트로 받아서 출력
+                
+                console.log("🔍 [fetchReviewTrend] 응답 원본:", responseText);  // 응답 확인
+                
+                if (!response.ok) {
+                    console.error("🚨 리뷰 트렌드 불러오기 실패! 응답 상태:", response.status);
+                    return;
+                }
+        
+                const data = JSON.parse(responseText);
+                console.log("📊 리뷰 트렌드 데이터:", data);
+        
+                if (!data || !data.review_trend) {
+                    console.warn("⚠️ 리뷰 트렌드 데이터가 없음!");
+                    return;
+                }
+        
+                updateReviewTrendChart(data.review_trend);
+        
+            } catch (error) {
+                console.error("🔥 리뷰 트렌드 불러오기 오류:", error);
+            }
+        }
+        
+        
+        
+        
+        
+        
+        // 🔹 Chart.js로 리뷰 트렌드 그래프 업데이트
+        let reviewTrendChart = null;
+
+        function updateReviewTrendChart(trendData) {
+            console.log("📊 [updateReviewTrendChart] 실행됨:", trendData);
+        
+            const trendContainer = document.getElementById("review-trend-container");
+            trendContainer.style.display = "block"; // 그래프 보이게 설정
+        
+            const ctx = document.getElementById("review-trend-chart").getContext("2d");
+        
+            if (reviewTrendChart) {
+                reviewTrendChart.destroy();
+            }
+        
+            const labels = Object.keys(trendData);
+            const values = Object.values(trendData).map(v => Math.round(v));  // ✅ 소수점 제거 (정수 변환)
+        
+            console.log("📊 [updateReviewTrendChart] 라벨:", labels);
+            console.log("📊 [updateReviewTrendChart] 데이터:", values);
+        
+            const maxValue = Math.max(...values);
+            const yMax = maxValue > 500 ? Math.ceil(maxValue * 1.2) : maxValue + 50;  // ✅ 최대값 보정
+        
+            // 📌 캔버스에서 그라데이션 색상 생성 (초록 → 아래로 갈수록 흰색)
+            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, "rgba(150, 150, 150, 1)");  // ✅ 연한 회색
+            gradient.addColorStop(1, "rgba(255, 255, 255, 0.1)");  // ✅ 흰색과 섞이게
+        
+            reviewTrendChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: gradient, // 📌 그라데이션 적용
+                        borderColor: "rgba(0, 0, 0, 1)", // 📌 진한 초록색
+                        borderWidth: 2.5,
+                        pointRadius: 0, // 📌 점 제거
+                        fill: true,
+                        clip: false // 📌 그래프가 삐져나오는 문제 해결
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    aspectRatio: 2, // 📌 그래프 비율 유지
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                display: true,
+                                font: { size: 12 },
+                                rotation: 0, // ✅ 라벨 회전을 0도로 설정 (가로로 표시)
+                                padding: 10, // ✅ 라벨과 축 사이의 간격 조정
+                                maxRotation: 0, // ✅ 최대 회전 각도 0도 (강제로 가로 유지)
+                                minRotation: 0, // ✅ 최소 회전 각도 0도 (강제로 가로 유지)
+                                autoSkip: true, // ✅ 라벨이 겹치지 않도록 자동 스킵
+                                callback: function(value, index) {
+                                    return labels[index].slice(5) + '월'; // ✅ "월"만 표시, 개행 제거
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: true },
+                            ticks: {
+                                display: true,
+                                font: { size: 12 },
+                                padding: 10,
+                                callback: function(value) {
+                                    return Math.round(value) + "개";
+                                }
+                            },
+                            beginAtZero: true,
+                            max: yMax  
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            bottom: 20 // ✅ 라벨이 잘리지 않도록 아래 여백 추가
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+        }    
+        async function updateCommentBox(data) {
+            const commentContent = document.getElementById("comment-content");
+        
+            console.log("📡 분석 데이터:", data);  // 🔍 서버 응답 데이터 확인
+        
+            if (!data || !data.product) {
+                commentContent.innerHTML = "<p>분석 데이터를 불러오지 못했습니다.</p>";
+                return;
+            }
+        
+            // **🚨 리뷰 개수 확인**
+            let reviewCount = data.product.review_count !== undefined ? data.product.review_count : 0;
+        
+            // **🚨 리뷰가 0개일 경우 메시지 표시**
+            if (reviewCount === 0) {
+                commentContent.innerHTML = `
+                    <div style="max-height: 200px; overflow-y: auto; text-align: center; padding: 20px; font-weight: normal; line-height: 1.6;">
+                        <p style="font-size: 16px; color: #666;">리뷰가 없어 리뷰 분석이 불가합니다.</p>
+                    </div>
+                `;
+                return;
+            }
+        
+            // **🚨 종합 분석 평가 점수**
+            let overallScore = data.overall_score ? data.overall_score.toFixed(1) : "0.0";
+            let overallText = "보통이에요. 비슷한 제품들과 비교했을 때 평균적인 점수를 받았습니다.";
+            let overallColor = "#FFD700"; // 노란색 (보통)
+        
+            if (overallScore >= 92) {
+                overallText = "우수해요! 다른 제품들보다 높은 점수를 받았습니다.";
+                overallColor = "#4CAF50"; // 초록색 (우수)
+            } else if (overallScore <= 83) {
+                overallText = "미흡해요. 개선이 필요한 부분이 있어 보입니다.";
+                overallColor = "#FF5733"; // 빨간색 (미흡)
+            }
+        
+            // **🚨 리뷰량 분석**
+            let reviewText = "적당한 리뷰 수지만 더 정확한 분석을 위해 리뷰가 더 필요해 보입니다.";
+            if (reviewCount > 150) {
+                reviewText = "리뷰가 많아 분석 결과의 신뢰도가 높습니다.";
+            } else if (reviewCount <= 50) {
+                reviewText = "리뷰가 적어 분석 결과의 신뢰도가 낮을 수 있습니다.";
+            }
+        
+            // **🚨 리뷰 추이 분석**
+            let trendText = "최근 제품 인기가 올라가고 있어요.";
+            if (data.review_trend && data.review_trend.past !== undefined && data.review_trend.recent !== undefined) {
+                const { recent, past } = data.review_trend;
+                if (past > recent) {
+                    trendText = "최근 리뷰가 줄어들고 있어 원인 파악이 필요해 보입니다.";
+                }
+            }
+        
+            // **🚨 토픽별 분석**
+            let topics = data.topics ? Object.entries(data.topics).sort((a, b) => b[1].score - a[1].score) : [];
+            let bestTopic1 = topics.length > 0 ? topics[0][0] : "정보 없음";
+            let bestTopic2 = topics.length > 1 ? topics[1][0] : "정보 없음";
+            let worstTopic1 = topics.length > 0 ? topics[topics.length - 1][0] : "정보 없음";
+            let worstTopic2 = topics.length > 1 ? topics[topics.length - 2][0] : "정보 없음";
+        
+            let worstScore1 = topics.length > 0 ? topics[topics.length - 1][1].score : 100;
+            let worstColor = worstScore1 < 85 ? "#FF5733" : "#FFD700";
+        
+            // **🚨 사이즈별 분석: API 직접 호출**
+            let bestSize = "정보 없음";
+            let worstSize = "정보 없음";
+            let bestSizeScore = "정보 없음";
+            let worstSizeScore = "정보 없음";
+            let topFrequencySizes = "정보 없음";
+        
+            const productId = document.getElementById("product-id").value.trim();
+            if (productId) {
+                try {
+                    console.log(`📡 사이즈 분석 API 호출: /api/size-analysis-product/${productId}`);
+                    const response = await fetch(`/api/size-analysis-product/${productId}`);
+                    if (!response.ok) {
+                        console.error("🚨 사이즈 분석 데이터 불러오기 실패");
+                    } else {
+                        const sizeData = await response.json();
+                        console.log("📏 [사이즈 분석 응답]", JSON.stringify(sizeData, null, 2));
+        
+                        // 사이즈 데이터가 있는 경우에만 업데이트
+                        if (sizeData && sizeData.top_sizes && sizeData.bottom_sizes) {
+                            bestSize = sizeData.top_sizes.length > 0 ? sizeData.top_sizes[0].review_size : "정보 없음";
+                            worstSize = sizeData.bottom_sizes.length > 0 ? sizeData.bottom_sizes[0].review_size : "정보 없음";
+                            bestSizeScore = sizeData.top_sizes.length > 0 ? sizeData.top_sizes[0].satisfaction_score.toFixed(1) : "정보 없음";
+                            worstSizeScore = sizeData.bottom_sizes.length > 0 ? sizeData.bottom_sizes[0].satisfaction_score.toFixed(1) : "정보 없음";
+        
+                            // 빈도 높은 사이즈 (상위 3개)
+                            const sortedSizes = [...(sizeData.top_sizes || []), ...(sizeData.bottom_sizes || [])]
+                                .sort((a, b) => b.total_reviews - a.total_reviews)
+                                .slice(0, 3);
+                            topFrequencySizes = sortedSizes.length > 0 
+                                ? sortedSizes.map(size => size.review_size).join(", ") 
+                                : "정보 없음";
+                        }
+                    }
+                } catch (error) {
+                    console.error("🔥 사이즈 분석 네트워크 오류:", error);
+                }
+            }
+        
+            // **🔥 최종 HTML 삽입 (스크롤 추가)**
+            commentContent.innerHTML = `
+                <div style="max-height: 200px; overflow-y: auto; text-align: left; padding: 10px; font-weight: normal; line-height: 1.6;">
+                    <p>이 제품의 종합 점수는 <span style="font-size: 16px; font-weight: bold; color: ${overallColor}; background-color: rgba(${overallColor === "#4CAF50" ? "76, 175, 80" : overallColor === "#FFD700" ? "255, 215, 0" : "255, 87, 51"}, 0.1); padding: 2px 6px; border-radius: 4px;">${overallScore}점 (${overallText})</span></p>
+                    <p><strong>🔹 리뷰량 한눈에 보기</strong></p>
+                    <p>현재 리뷰는 총 <span style="font-size: 15px; font-weight: bold; color: black; background-color: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px;">${reviewCount}개</span>가 있습니다. ${reviewText} 최근 리뷰 추이를 보면, ${trendText}</p>
+                    <p><strong>🔹 장점과 단점</strong></p>
+                    <p>사용자들이 가장 만족한 부분은 <span style="font-size: 15px; font-weight: bold; color: #4CAF50; background-color: rgba(76, 175, 80, 0.1); padding: 2px 6px; border-radius: 4px;">${bestTopic1}</span>과 <span style="font-size: 15px; font-weight: bold; color: #4CAF50; background-color: rgba(76, 175, 80, 0.1); padding: 2px 6px; border-radius: 4px;">${bestTopic2}</span>였습니다. 반면, 아쉬운 점으로는 <span style="font-size: 15px; font-weight: bold; color: ${worstColor}; background-color: rgba(${worstColor === "#FF5733" ? "255, 87, 51" : "255, 215, 0"}, 0.1); padding: 2px 6px; border-radius: 4px;">${worstTopic1}</span>과 <span style="font-size: 15px; font-weight: bold; color: ${worstColor}; background-color: rgba(${worstColor === "#FF5733" ? "255, 87, 51" : "255, 215, 0"}, 0.1); padding: 2px 6px; border-radius: 4px;">${worstTopic2}</span>가 꼽혔습니다.</p>
+                    ${worstScore1 < 85 ? `<p>특히 <span style="font-size: 15px; font-weight: bold; color: #FF5733; background-color: rgba(255, 87, 51, 0.1); padding: 2px 6px; border-radius: 4px;">${worstTopic1}</span>은 <span style="font-size: 15px; font-weight: bold; color: #FF5733; background-color: rgba(255, 87, 51, 0.1); padding: 2px 6px; border-radius: 4px;">${worstScore1}점</span>으로, 개선이 필요해 보입니다.</p>` : ""}
+                    <p><strong>🔹 사이즈별 피드백</strong></p>
+                    <p>가장 만족도가 높은 사이즈는 <span style="font-size: 15px; font-weight: bold; color: #4CAF50; background-color: rgba(76, 175, 80, 0.1); padding: 2px 6px; border-radius: 4px;">${bestSize}</span> (<span style="font-size: 15px; font-weight: bold; color: #4CAF50; background-color: rgba(76, 175, 80, 0.1); padding: 2px 6px; border-radius: 4px;">${bestSizeScore}점</span>)이고, 가장 낮은 사이즈는 <span style="font-size: 15px; font-weight: bold; color: #FF5733; background-color: rgba(255, 87, 51, 0.1); padding: 2px 6px; border-radius: 4px;">${worstSize}</span> (<span style="font-size: 15px; font-weight: bold; color: #FF5733; background-color: rgba(255, 87, 51, 0.1); padding: 2px 6px; border-radius: 4px;">${worstSizeScore}점</span>)입니다. 많이 선택된 사이즈는 <span style="font-size: 15px; font-weight: bold; color: #333; background-color: rgba(0, 0, 0, 0.05); padding: 2px 6px; border-radius: 4px;">${topFrequencySizes}</span>였습니다.</p>
+                    <p>인기 사이즈는 생산량을 늘리고, 만족도가 낮은 사이즈는 실제 제품과 사이즈가 잘 맞는지 확인해 보세요. 더 자세한 내용은 아래에서 확인할 수 있습니다.</p>
+                    <p><strong>🔹 참고하세요</strong></p>
+                    <p>이 요약을 바탕으로 중요한 리뷰들만 모아 "주요 리뷰 모음"에 정리해 두었으니 확인해 보세요!</p>
+                </div>
+            `;
+        }
+        
+        
+        
+        async function fetchSizeAnalysis(productId) {
+            try {
+                console.log(`📡 사이즈 분석 API 호출: /api/size-analysis-product/${productId}`);
+        
+                const response = await fetch(`/api/size-analysis-product/${productId}`);
+                if (!response.ok) {
+                    console.error("🚨 사이즈 분석 데이터 불러오기 실패");
+                    return;
+                }
+        
+                const data = await response.json();
+                console.log("📏 [사이즈 분석 응답]", JSON.stringify(data, null, 2));  // ✅ 데이터 확인용 로그 추가
+        
+                // 🔹 데이터가 비어있지 않은 경우 그래프 업데이트
+                if (data && data.top_sizes) {
+                    updateSizeSatisfactionChart(data);
+                    updateSizeFrequencyChart(data);
+                } else {
+                    console.warn("🚨 사이즈 분석 데이터가 비어 있음");
+                }
+        
+            } catch (error) {
+                console.error("🔥 사이즈 분석 네트워크 오류:", error);
+            }
+        }
+           
+        
+        function updateSizeSatisfactionChart(data) {
+            const sizeSatisfactionContainer = document.getElementById("size-satisfaction-results");
+            sizeSatisfactionContainer.innerHTML = ""; // 기존 데이터 초기화
+        
+            console.log("📏 [사이즈 만족도 업데이트] 데이터 확인:", data);
+        
+            if (!data || !data.top_sizes || data.top_sizes.length === 0) {
+                console.warn("🚨 사이즈 만족도 데이터 없음");
+                sizeSatisfactionContainer.innerHTML = "<p style='color: gray;'>데이터 없음</p>";
+                return;
+            }
+        
+            console.log("📏 [사이즈 만족도 업데이트] 상위 3개:", data.top_sizes);
+            console.log("📏 [사이즈 만족도 업데이트] 하위 3개:", data.bottom_sizes);
+        
+            // ✅ 중복 제거를 위한 Set
+            const displayedSizes = new Set();
+        
+            // ✅ 상위 3개 만족도 추가 (툴팁 적용)
+            data.top_sizes.forEach((size) => {
+                let score = parseFloat(size.satisfaction_score);
+                let labelText = size.review_size;
+                let shortLabel = labelText.length > 15 ? labelText.slice(0, 15) + "..." : labelText;
+        
+                let labelWithTooltip = `
+                    <div class="tooltip">
+                        ${shortLabel}
+                        <div class="tooltip-text">${labelText}</div>
+                    </div>
+                `;
+        
+                addBar(sizeSatisfactionContainer, labelWithTooltip, score, "", 100, true);
+                displayedSizes.add(labelText); // 표시된 사이즈 기록
+            });
+        
+        
+            // ✅ 하위 3개 만족도 추가 (중복 제외, 툴팁 적용)
+            data.bottom_sizes.forEach((size) => {
+                let labelText = size.review_size;
+        
+                // 이미 표시된 사이즈는 건너뜀
+                if (displayedSizes.has(labelText)) {
+                    return;
+                }
+        
+                let score = parseFloat(size.satisfaction_score);
+                let shortLabel = labelText.length > 15 ? labelText.slice(0, 15) + "..." : labelText;
+        
+                let labelWithTooltip = `
+                    <div class="tooltip">
+                        ${shortLabel}
+                        <div class="tooltip-text">${labelText}</div>
+                    </div>
+                `;
+        
+                addBar(sizeSatisfactionContainer, labelWithTooltip, score, "", 100, true);
+                displayedSizes.add(labelText); // 표시된 사이즈 기록
+            });
+        }
+        
+        
+        
+        function updateSizeFrequencyChart(data) {
+            const sizeFrequencyContainer = document.getElementById("size-frequency-results");
+            sizeFrequencyContainer.innerHTML = ""; // 기존 데이터 초기화
+        
+            if (!data || !data.top_sizes || data.top_sizes.length === 0) {
+                console.warn("🚨 사이즈 빈도 데이터 없음");
+                sizeFrequencyContainer.innerHTML = "<p>데이터 없음</p>";
+                return;
+            }
+        
+            console.log("📏 [사이즈 빈도 업데이트] 데이터 확인:", data);
+        
+            // ✅ 중복 제거: top_sizes와 bottom_sizes를 합치고 중복 제거
+            const allSizesMap = new Map();
+            [...data.top_sizes, ...data.bottom_sizes].forEach((size) => {
+                if (!allSizesMap.has(size.review_size)) {
+                    allSizesMap.set(size.review_size, size);
+                }
+            });
+        
+            const allSizes = Array.from(allSizesMap.values());
+        
+            // ✅ 모든 사이즈 데이터 정렬 후 상위 6개 선택
+            const sortedSizes = allSizes
+                .sort((a, b) => b.total_reviews - a.total_reviews) // 내림차순 정렬
+                .slice(0, 6); // 상위 6개만 가져오기
+        
+            // ✅ 총 리뷰 개수 계산 (비율 계산용)
+            const totalReviews = sortedSizes.reduce((sum, size) => sum + size.total_reviews, 0);
+        
+            sortedSizes.forEach((size) => {
+                const percent = ((size.total_reviews / totalReviews) * 100).toFixed(1);
+                const displayText = `${percent}%`;
+        
+                // ✅ 사이즈 라벨 (툴팁 포함)
+                let labelText = size.review_size;
+                let shortLabel = labelText.length > 15 ? labelText.slice(0, 15) + "..." : labelText;
+        
+                // ✅ 마우스 오버 시 툴팁 표시하는 구조로 변경
+                let labelWithTooltip = `
+                    <div class="tooltip">
+                        ${shortLabel}
+                        <div class="tooltip-text">${labelText}</div>
+                    </div>
+                `;
+        
+                addBar(sizeFrequencyContainer, labelWithTooltip, size.total_reviews, displayText, totalReviews, false);
+            });
+        }
+
+        function getQueryParam(param) {
+            let params = new URLSearchParams(window.location.search);
+            return params.get(param);
+        }
+    
+        window.onload = function() {
+            let productId = getQueryParam("id");
+            let productIdElement = document.getElementById("product-id-display");
+            
+            if (productId && productIdElement) {  // ✅ 요소가 존재할 때만 실행
+                productIdElement.innerText = "제품 ID: " + productId;
+            }
+        };
+
+        function searchFromHeader() {
+            let productId = document.getElementById("header-search-id").value.trim();
+            if (!productId) {
+                alert("❌ 제품 ID를 입력하세요.");
+                return;
+            }
+            // 현재 페이지의 URL을 검색 ID로 변경 후 새로고침
+            window.location.href = `/dashboard/strength-weakness/?id=${productId}`;
+        }
+        
+        window.onload = function() {
+            let productId = getQueryParam("id");
+            if (productId) {  
+                document.getElementById("product-id").value = productId;  
+                
+                fetchAnalysis();  // 🔥 URL에서 받은 ID로 자동 검색 실행
+                
+            }
+        };
+
+        function goToShop() {
+            const productId = document.getElementById("product-id").value.trim();
+            if (!productId) {
+                alert("❌ 제품 ID를 입력하세요.");
+                return;
+            }
+    
+            // ✅ 실제 무신사 같은 쇼핑몰 URL로 이동하도록 수정
+            const shopUrl = `https://www.musinsa.com/products/${productId}`;
+            window.open(shopUrl, "_blank");
+        }      
+    </script>
+</div>
+{% endblock %}
+</html>

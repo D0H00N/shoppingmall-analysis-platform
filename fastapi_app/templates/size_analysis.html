@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사이즈 분석</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { width: 80%; margin: auto; }
+        .btn { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        canvas { max-width: 80%; margin: auto; }
+        .summary-info { display: flex; justify-content: space-around; margin: 20px 0; }
+        .summary-box { background: #f4f4f4; padding: 15px; border-radius: 10px; text-align: center; width: 30%; cursor: pointer; }
+        .summary-box:hover { background: #ddd; }
+        .summary-box p { font-size: 14px; color: #666; }
+        .summary-box h3 { font-size: 20px; margin: 5px 0 0; }
+        .toggle-table { width: 100%; border-collapse: collapse; margin-top: 10px; display: none; }
+        .table-container { width: 50%; }
+        .list-container { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 20px; width: 100%; }
+        .detail-container {
+            width: 45%;
+            display: none;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f4f4f4;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        /* 상품 이미지 스타일 */
+        .detail-container img {
+            width: 100px;
+            height: 100px;
+            background-color: #007bff;
+            display: block;
+            text-align: center;
+            line-height: 100px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* 게이지 바 스타일 */
+        .gauge-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin: 5px 0;
+        }
+
+        .gauge-fill {
+            height: 20px;
+            border-radius: 10px;
+            text-align: right;
+            padding-right: 5px;
+            color: white;
+            font-weight: bold;
+            background-color: #dc3545;
+        }
+
+        .chart-container {
+            display: flex;
+            justify-content: center; /* 가로 중앙 정렬 */
+            gap: 20px; /* 차트 사이 간격 */
+            margin-top: 20px;
+            flex-wrap: wrap; /* 화면이 작아질 경우 차트 줄바꿈 */
+        }
+
+        .chart-container canvas {
+            width: 35%; /* 차트 크기 조정 */
+            max-width: 300px;
+            height: auto;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>사이즈 분석</h1>
+
+        <h2>부정 리뷰 많은 사이즈</h2>
+        <div class="summary-info">
+            <div class="summary-box" id="toggle-category">
+                <p>카테고리 별</p>
+                <h3 id="category-size-summary">-</h3>
+            </div>
+            <div class="summary-box" id="toggle-brand">
+                <p>브랜드 별</p>
+                <h3 id="brand-size-summary">-</h3>
+            </div>
+            <div class="summary-box" id="toggle-negative">
+                <p>부정 리뷰 비율이 가장 높은 사이즈</p>
+                <h3 id="most-negative-summary">-</h3>
+            </div>
+        </div>
+
+        <!-- ✅ 도넛 차트 가로 정렬 -->
+        <div class="chart-container">
+            <!-- ✅ 카테고리별 부정 리뷰 개수 도넛 차트 -->
+            <canvas id="categoryDoughnutChart"></canvas>
+
+            <!-- ✅ 브랜드별 부정 리뷰 개수 도넛 차트 -->
+            <canvas id="brandDoughnutChart"></canvas>
+
+            <!-- ✅ 사이즈별 리뷰 개수 도넛 차트 -->
+            <canvas id="sizeDoughnutChart"></canvas>
+        </div>
+
+    <div class="container">
+        <h2>리스트 확인</h2>
+        <div class="list-container">
+            <!-- 왼쪽: 리스트 테이블 -->
+            <div class="table-container">
+                <table id="category-negative-table" class="toggle-table">
+                    <thead><tr><th>카테고리</th><th>사이즈</th><th>부정 비율 (%)</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+
+                <table id="brand-negative-table" class="toggle-table">
+                    <thead><tr><th>브랜드</th><th>사이즈</th><th>부정 비율 (%)</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+    
+                <table id="most-negative-table" class="toggle-table">
+                    <thead>
+                        <tr>
+                            <th>제품명</th>
+                            <th>사이즈</th>
+                            <th>부정 비율 (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+    
+            <!-- 오른쪽: 상세 정보 -->
+            <div id="detail-container" class="detail-container">
+                <h3>부정비율</h3>
+                <div class="gauge-bar">
+                    <div id="detail-gauge" class="gauge-fill"></div>
+                </div>
+                <img id="detail-image" src="#" alt="이미지">
+                <p><strong>상품아이디:</strong> <span id="detail-product-id"></span></p>
+                <p><strong>사이즈:</strong> <span id="detail-size"></span></p>
+                <p><strong>상품명:</strong> <span id="detail-name"></span></p>
+                <p><strong>카테고리:</strong> <span id="detail-category"></span></p>
+                <p><strong>브랜드:</strong> <span id="detail-brand"></span></p>
+                <p><strong>성별:</strong> <span id="detail-gender"></span></p>
+                <p><strong>가격:</strong> <span id="detail-price"></span></p>
+
+                 <!-- ✅ 리뷰 리스트 추가 -->
+                <h3>리뷰</h3>
+                <ul id="review-list" style="list-style: none; padding: 0;"></ul>
+            </div>
+        </div>
+    </div>
+    
+
+    <script>
+        let categoryData = [];
+        let brandData = [];
+        let sizeData = [];
+
+        fetch("/api/size-analysis")
+            .then(response => response.json())
+            .then(data => {
+                console.log("API 응답:", data);
+                updateSummaryInfo(data.summary_info);
+
+                categoryData = data.most_negative_categories;
+                brandData = data.most_negative_brands;
+                sizeData = data.most_negative_sizes;
+
+                // ✅ 초기 로딩 시 도넛 차트 자동 표시 (카테고리별 리스트 개수)
+                createCategoryDoughnutChart(categoryData);
+                createBrandDoughnutChart(brandData);
+                createSizeDoughnutChart(sizeData);
+
+                displayTable("category-negative-table", categoryData, "category");
+                displayTable("brand-negative-table", brandData, "brand");
+                displayTable("most-negative-table", sizeData, "negative");
+            })
+            .catch(error => console.error("API 요청 실패:", error));
+
+
+        // 요약 정보
+        function updateSummaryInfo(summary) {
+            document.getElementById("category-size-summary").textContent = `${summary.category_negative_count}개`;
+            document.getElementById("brand-size-summary").textContent = `${summary.brand_negative_count}개`;
+            document.getElementById("most-negative-summary").textContent = `${summary.most_frequent_most_negative}`;
+        }
+
+        let categoryDoughnutChart = null;
+        let brandDoughnutChart = null;
+        let sizeDoughnutChart = null;
+
+        // ✅ Chart.js를 이용한 카테고리별 부정 리뷰 개수 도넛 차트
+        function createCategoryDoughnutChart(data) {
+            const ctx = document.getElementById('categoryDoughnutChart').getContext('2d');
+
+            // 기존 차트 삭제 (중복 방지)
+            if (categoryDoughnutChart) {
+                categoryDoughnutChart.destroy();
+            }
+
+            // ✅ 카테고리별 리스트 개수 계산
+            const categoryCounts = {};
+            data.forEach(item => {
+                categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+            });
+
+            const labels = Object.keys(categoryCounts);
+            const values = Object.values(categoryCounts);
+
+            categoryDoughnutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '카테고리별 부정 리뷰 개수',
+                        data: values,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,  // ✅ 차트 비율 유지 비활성화
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // ✅ Chart.js를 이용한 브랜드별 부정 리뷰 개수 도넛 차트
+        function createBrandDoughnutChart(data) {
+            const ctx = document.getElementById('brandDoughnutChart').getContext('2d');
+
+            // 기존 차트 삭제 (중복 방지)
+            if (brandDoughnutChart) {
+                brandDoughnutChart.destroy();
+            }
+
+            // ✅ 브랜드별 리스트 개수 계산
+            const brandCounts = {};
+            data.forEach(item => {
+                brandCounts[item.brand] = (brandCounts[item.brand] || 0) + 1;
+            });
+
+            const labels = Object.keys(brandCounts);
+            const values = Object.values(brandCounts);
+
+            brandDoughnutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '브랜드별 부정 리뷰 개수',
+                        data: values,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,  // ✅ 차트 비율 유지 비활성화
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // ✅ 사이즈별 리뷰 개수 도넛 차트 생성
+        function createSizeDoughnutChart(data) {
+            const ctx = document.getElementById('sizeDoughnutChart').getContext('2d');
+
+            if (sizeDoughnutChart) {
+                sizeDoughnutChart.destroy();
+            }
+
+            // ✅ 사이즈별 리스트 개수 계산
+            const sizeCounts = {};
+            data.forEach(item => {
+                sizeCounts[item.review_size] = (sizeCounts[item.review_size] || 0) + 1;
+            });
+
+            const labels = Object.keys(sizeCounts);
+            const values = Object.values(sizeCounts);
+
+            sizeDoughnutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '사이즈별 리뷰 개수',
+                        data: values,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // 요약 정보를 클릭하면 해당 리스트를 토글하는 기능 추가
+        document.getElementById("toggle-category").addEventListener("click", function () {
+            toggleTable("category-negative-table");
+        });
+
+        document.getElementById("toggle-brand").addEventListener("click", function () {
+            toggleTable("brand-negative-table");
+        });
+
+        document.getElementById("toggle-negative").addEventListener("click", function () {
+            toggleTable("most-negative-table");
+        });
+
+        function toggleTable(tableId) {
+            // 모든 테이블을 숨김
+            document.querySelectorAll(".toggle-table").forEach(table => {
+                if (table.id !== tableId) {
+                    table.style.display = "none";
+                }
+            });
+
+            // 현재 클릭한 테이블만 토글
+            const table = document.getElementById(tableId);
+            if (table) {
+                table.style.display = table.style.display === "table" ? "none" : "table";
+            }
+        }
+
+
+        // ✅ 리스트 테이블을 생성하는 함수 (이벤트 리스너 추가)
+        function displayTable(tableId, data, type) {
+            const tableBody = document.getElementById(tableId).querySelector("tbody");
+            tableBody.innerHTML = "";  // 기존 내용 초기화
+
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = "<tr><td colspan='3'>데이터 없음</td></tr>";
+                return;
+            }
+
+            data.forEach(row => {
+                let tr = document.createElement("tr");
+                if (type === "category") {
+                    tr.innerHTML = `<td>${row.category}</td><td>${row.review_size}</td><td>${row.negative_ratio}%</td>`;
+                } else if (type === "brand") {
+                    tr.innerHTML = `<td>${row.brand}</td><td>${row.review_size}</td><td>${row.negative_ratio}%</td>`;
+                } else if (type === "negative") {
+                    tr.innerHTML = `<td>${row.product_name}</td><td>${row.review_size}</td><td>${row.negative_ratio}%</td>`;
+                }
+
+                // ✅ 클릭 이벤트 추가 (상세 정보 표시)
+                tr.addEventListener("click", function () {
+                    showProductDetails(row);
+                });
+
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById(tableId).style.display = "none";
+        }
+
+        // 제품 상세 정보
+        function showProductDetails(row) {
+            document.getElementById("detail-container").style.display = "block";
+            document.getElementById("detail-product-id").textContent = row.product_id;
+            document.getElementById("detail-size").textContent = row.review_size;
+            document.getElementById("detail-name").textContent = row.product_name;
+            document.getElementById("detail-category").textContent = row.category;
+            document.getElementById("detail-brand").textContent = row.brand;
+            document.getElementById("detail-price").textContent = row.price ? `${row.price}` : "N/A";
+            document.getElementById("detail-gender").textContent = row.gender || "N/A";
+            document.getElementById("detail-image").src = row.image_url || "default.jpg";
+
+            // ✅ 게이지 바 업데이트 (부정 비율)
+            const gauge = document.getElementById("detail-gauge");
+            gauge.style.width = `${row.negative_ratio}%`;
+            gauge.textContent = `${row.negative_ratio}%`;
+
+            // ✅ 리뷰 데이터 표시 (추가 API 호출 없이 바로 표시)
+            displayReviews(row.reviews);
+        }
+
+        // ✅ 리뷰 리스트를 화면에 표시하는 함수
+        function displayReviews(reviews) {
+            const reviewList = document.getElementById("review-list");
+            reviewList.innerHTML = "";  // 기존 리뷰 초기화
+
+            if (!reviews || reviews.trim() === "") {
+                reviewList.innerHTML = "<li>리뷰가 없습니다.</li>";
+                return;
+            }
+
+            // ✅ ' || '로 구분된 리뷰를 리스트로 변환
+            reviews.split(" || ").forEach(review_text => {
+                let li = document.createElement("li");
+                li.innerHTML = `<div style="background:#fff; padding:10px; border-radius:5px; margin-bottom:5px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);">
+                                    <p>${review_text}</p>
+                                </div>`;
+                reviewList.appendChild(li);
+            });
+        }
+                    
+    </script>
+</body>
+</html>

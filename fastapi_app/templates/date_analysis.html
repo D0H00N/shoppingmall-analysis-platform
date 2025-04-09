@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>날짜 리뷰 분석 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column; /* 세로 방향 정렬 */
+            align-items: center; /* 중앙 정렬 */
+            height: 100vh; /* 화면 전체 높이 */
+            background-color: #f5f5f5; /* 배경색 */
+        } 
+        h1 {
+            margin-bottom: 20px; /* 텍스트와 카드 사이 간격 */
+            font-size: 24px;
+            font-weight: bold;
+        }    
+        .card {
+            background: white;
+            border-radius: 12px; /* 둥근 모서리 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 그림자 효과 */
+            padding: 20px;
+            max-width: 1000px;
+            width: 100%;
+        }
+        select {
+            width: 100%; /* 전체 너비로 확장 */
+            padding: 10px; /* 내부 여백 추가 */
+            border: 1px solid #ddd; /* 테두리 스타일 */
+            border-radius: 6px; /* 둥근 모서리 */
+            font-size: 14px; /* 글자 크기 확대 */
+            box-sizing: border-box; /* 패딩 포함 너비 계산 */
+        }
+        .filter {
+            display: flex;
+            grid-template-columns: 1fr;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 1000px;
+            margin: 10px auto;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        input, button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #chartContainer {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>날짜 리뷰 분석</h1>
+        <div class="card">    
+            <div class="filter">
+                
+                <label for="brand">브랜드</label>
+                <select id="brand">
+                    <option value="">브랜드를 선택하세요.</option>
+                </select>
+
+                <label for="productId">제품 ID</label>
+                <input type="number" id="productId" placeholder="제품 ID를 입력하세요" required>
+
+                <label for="startDate">시작일자</label>
+                <input type="date" id="startDate" min="2015-01-01" max="2025-12-31" required>
+                
+                <label for="endDate">종료일자</label>
+                <input type="date" id="endDate" min="2015-01-01" max="2025-12-31" required>
+                
+                <button onclick="loadData()">조회</button>
+            </div>
+
+            <div id="chartContainer">
+                <canvas id="chart"></canvas>
+            </div>
+
+            <script>
+                let chart = null;
+
+                async function loadBrands() {
+            try {
+                const response = await fetch("/api/brands");
+                console.log("🔍 응답 상태 코드:", response.status);
+                if (!response.ok) throw new Error("Failed to fetch brands");
+
+                const data = await response.json();
+                console.log("🔍 브랜드 목록:", data.brands); // 디버깅용 로그
+                const brandSelect = document.getElementById("brand");
+
+                // 드롭다운 초기화
+                brandSelect.innerHTML = '<option value="">Select a Brand</option>';
+
+                // 브랜드 옵션 추가
+                data.brands.forEach(brand => {
+                    const option = document.createElement("option");
+                    option.value = brand;
+                    option.textContent = brand;
+                    brandSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading brands:", error);
+            }
+        }        
+                // 페이지 로드 시 loadBrands() 호출
+                window.onload = function () {
+                    loadBrands(); // 페이지가 로드되면 브랜드 목록을 자동으로 가져옴
+                };
+
+
+                async function loadData() {
+                    const productId = document.getElementById("productId").value; 
+                    const brand = document.getElementById("brand").value;
+                    const startDate = document.getElementById('startDate').value;
+                    const endDate = document.getElementById('endDate').value;
+                
+                // 요청 데이터 생성
+                const requestData = {};
+                if (productId) requestData.product_id = parseInt(productId);
+                if (brand) requestData.brand = brand;
+                if (startDate) requestData.startDate = startDate;
+                if (endDate) requestData.endDate = endDate;
+
+                // 아무 값도 없으면 경고 메시지 출력
+                if (!brand && !productId && !startDate && !endDate) {
+                    alert("최소 하나를 입력해주세요.");
+                    return;
+                }
+                
+                    try {
+                        const response = await fetch(`/api/date_analysis?timestamp=${Date.now()}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestData)
+                        });
+                
+                        if (!response.ok) throw new Error('서버 응답 오류');
+                        const data = await response.json();
+                
+                        console.log('요청된 날짜 범위:', { startDate, endDate });
+                        console.log('서버 응답 데이터:', data);
+                
+                        // 기존 차트 제거
+                        if (chart) {
+                        console.log("✅ 기존 차트 제거");
+                        chart.destroy(); // 기존 차트를 파괴
+                        chart = null; // 초기화
+                        }
+                        
+                        console.log("✅ 새 차트 생성:", { labels: data.labels, values: data.values });
+
+                        const ctx = document.getElementById("chart").getContext("2d");
+                        chart = new Chart(ctx, { // 새 차트를 생성하고 chart 변수에 저장
+                            type: 'line',
+                            data: {
+                                labels: data.labels,
+                                datasets: [{
+                                    label: `${startDate} ~ ${endDate} 기간 Product ID ${productId} 리뷰 데이터`,
+                                    data: data.values,
+                                    borderColor: '#4CAF50',
+                                    tension: 0.4,
+                                    fill: false
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day',
+                                            tooltipFormat: 'yyyy-MM-dd',
+                                            displayFormats: {day: 'yyyy-MM-dd'}
+                                        },
+                                        title: { display: true, text: '날짜' },
+                                        //min: startDate, // X축 최소값 (선택한 시작 날짜)
+                                        //max: endDate   // X축 최대값 (선택한 종료 날짜)
+                                    },
+                                    y: {
+                                        ticks: {
+                                            // Y축 값을 정수로 표시
+                                            callback: function(value) {
+                                                return Math.floor(value); // 소수점 제거
+                                            }
+                                        },
+                                        beginAtZero: true,
+                                        title: { display: true, text: '리뷰 수' }
+                                    }
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('데이터 로딩 실패:' + error.message);
+                    }
+                }
+                
+                // 이벤트 핸들러 등록
+                document.addEventListener('DOMContentLoaded', () => {
+                document.addEventListener("DOMContentLoaded", loadBrands);    
+                document.getElementById('startDate').addEventListener('change', loadData);
+                document.getElementById('endDate').addEventListener('change', loadData);
+                document.getElementById('productId').addEventListener('change', loadData);
+                document.querySelector('button').addEventListener('click', loadData);
+                loadData();
+            });
+        </script>
