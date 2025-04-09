@@ -15,6 +15,4 @@
 
 ## 🖼 프로젝트 아키텍처
 ![image](./images/architecture.png)
-![image](./images/erd.png)
-
-## 🗂 프로젝트 파일 구조
+![image](./images/usecase.png)
